@@ -2,209 +2,177 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Class Quiz Monitoring</title>
+  <title>Quiz Monitoring System</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 2rem;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin-top: 1rem;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 0.5rem;
-      text-align: center;
-    }
-    th {
-      background-color: #f2f2f2;
-    }
-    .fail-row {
-      background-color: #ffe5e5;
-    }
-    .fail-score {
-      color: red;
-      font-weight: bold;
-    }
-    input[type="number"], input[type="text"], input[type="date"] {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 0.3rem;
-    }
-    button {
-      margin: 1rem 0.5rem 0 0;
-      padding: 0.5rem 1rem;
-      cursor: pointer;
-    }
-    .header-fields {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      margin-bottom: 1rem;
-    }
-    .header-fields label {
-      font-weight: bold;
-    }
-    .header-fields input {
-      min-width: 200px;
-    }
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: center; }
+    th { background-color: #f2f2f2; }
+    .fail { background-color: #ffe5e5; color: red; font-weight: bold; }
+    input[type="number"], input[type="text"] { width: 100%; box-sizing: border-box; padding: 0.3rem; }
+    input.quiz-title { font-weight: bold; text-align: center; }
+    .file-upload { margin-top: 1rem; }
   </style>
 </head>
 <body>
 
-  <h2>Class Quiz Monitoring</h2>
+<h2>Class Quiz Monitoring System</h2>
 
-  <div class="header-fields">
-    <div>
-      <label for="subject">Subject / Quiz Title:</label><br>
-      <input type="text" id="subject" placeholder="e.g., Math Quiz 1">
-    </div>
-    <div>
-      <label for="quizDate">Quiz Date:</label><br>
-      <input type="date" id="quizDate">
-    </div>
-    <div>
-      <label for="passingGrade">Passing Grade (%):</label><br>
-      <input type="number" id="passingGrade" value="75" min="0" max="100">
-    </div>
-  </div>
+<input type="file" id="csvUpload" accept=".csv" class="file-upload">
+<button onclick="addQuizColumn()">Add Quiz</button>
+<button onclick="addStudentRow()">Add Student</button>
+<button onclick="evaluateAll()">Evaluate</button>
+<button onclick="exportCSV()">Download CSV</button>
 
-  <table id="quizTable">
-    <thead>
-      <tr>
-        <th>Student Name</th>
-        <th>Raw Score</th>
-        <th>Highest Score</th>
-        <th>Percentage</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody id="tableBody"></tbody>
-  </table>
+<table id="quizTable">
+  <thead>
+    <tr id="quizTitles">
+      <th>Student Name</th>
+    </tr>
+    <tr id="maxScores">
+      <th>Max Score</th>
+    </tr>
+  </thead>
+  <tbody id="studentScores"></tbody>
+</table>
 
-  <button onclick="addRow()">Add Student</button>
-  <button onclick="evaluate()">Evaluate</button>
-  <button onclick="exportCSV()">Download CSV</button>
+<script>
+  function addQuizColumn(title = "Quiz", maxScore = 100) {
+    const titleRow = document.getElementById("quizTitles");
+    const maxRow = document.getElementById("maxScores");
+    const colIndex = titleRow.cells.length;
 
-  <script>
-    const tableBody = document.getElementById("tableBody");
+    let th = document.createElement("th");
+    let input = document.createElement("input");
+    input.type = "text";
+    input.value = title;
+    input.className = "quiz-title";
+    th.appendChild(input);
+    titleRow.appendChild(th);
 
-    function evaluate() {
-      const passingGrade = parseFloat(document.getElementById("passingGrade").value);
-      const rows = tableBody.querySelectorAll("tr");
+    let maxTh = document.createElement("th");
+    let maxInput = document.createElement("input");
+    maxInput.type = "number";
+    maxInput.value = maxScore;
+    maxInput.min = 1;
+    maxTh.appendChild(maxInput);
+    maxRow.appendChild(maxTh);
 
-      rows.forEach(row => {
-        const raw = parseFloat(row.cells[1].querySelector("input").value);
-        const high = parseFloat(row.cells[2].querySelector("input").value);
-        const percentCell = row.cells[3];
-        const statusCell = row.cells[4];
+    const rows = document.querySelectorAll("#studentScores tr");
+    rows.forEach(row => {
+      let td = document.createElement("td");
+      let scoreInput = document.createElement("input");
+      scoreInput.type = "number";
+      scoreInput.min = 0;
+      td.appendChild(scoreInput);
+      row.appendChild(td);
+    });
+  }
 
-        percentCell.classList.remove("fail-score");
-        row.classList.remove("fail-row");
+  function addStudentRow(name = "") {
+    const row = document.createElement("tr");
+    const totalCols = document.getElementById("quizTitles").cells.length;
 
-        if (isNaN(raw) || isNaN(high) || high === 0) {
-          percentCell.textContent = "N/A";
-          statusCell.textContent = "Invalid";
-        } else {
-          const percent = ((raw / high) * 100).toFixed(2);
-          percentCell.textContent = percent + "%";
-
-          if (percent >= passingGrade) {
-            statusCell.textContent = "Passed";
-          } else {
-            statusCell.textContent = "Failed";
-            percentCell.classList.add("fail-score");
-            row.classList.add("fail-row");
-          }
-        }
-      });
-
-      saveData();
-    }
-
-    function addRow(name = "", raw = "", high = "") {
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td><input type="text" value="${name}"></td>
-        <td><input type="number" value="${raw}"></td>
-        <td><input type="number" value="${high}"></td>
-        <td class="percent"></td>
-        <td class="status"></td>
-      `;
-
-      row.querySelectorAll("input").forEach(input => {
-        input.addEventListener("input", evaluate);
-      });
-
-      tableBody.appendChild(row);
-      evaluate();
-    }
-
-    function exportCSV() {
-      let subject = document.getElementById("subject").value || "Untitled Quiz";
-      let date = document.getElementById("quizDate").value || "No Date";
-      let csv = `Subject:,${subject}\nDate:,${date}\n\n`;
-      csv += "Student Name,Raw Score,Highest Score,Percentage,Status\n";
-
-      const rows = tableBody.querySelectorAll("tr");
-
-      rows.forEach(row => {
-        const name = row.cells[0].querySelector("input").value;
-        const raw = row.cells[1].querySelector("input").value;
-        const high = row.cells[2].querySelector("input").value;
-        const percent = row.cells[3].textContent;
-        const status = row.cells[4].textContent;
-
-        csv += `"${name}",${raw},${high},${percent},${status}\n`;
-      });
-
-      const blob = new Blob([csv], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${subject.replace(/\s+/g, "_") || "quiz"}_scores.csv`;
-      a.click();
-    }
-
-    function saveData() {
-      const data = {
-        subject: document.getElementById("subject").value,
-        date: document.getElementById("quizDate").value,
-        students: []
-      };
-
-      const rows = tableBody.querySelectorAll("tr");
-
-      rows.forEach(row => {
-        const name = row.cells[0].querySelector("input").value;
-        const raw = row.cells[1].querySelector("input").value;
-        const high = row.cells[2].querySelector("input").value;
-        data.students.push({ name, raw, high });
-      });
-
-      localStorage.setItem("quizData", JSON.stringify(data));
-    }
-
-    function loadData() {
-      const saved = localStorage.getItem("quizData");
-      if (saved) {
-        const data = JSON.parse(saved);
-        document.getElementById("subject").value = data.subject || "";
-        document.getElementById("quizDate").value = data.date || "";
-
-        data.students.forEach(entry => {
-          addRow(entry.name, entry.raw, entry.high);
-        });
+    for (let i = 0; i < totalCols; i++) {
+      let cell = document.createElement("td");
+      if (i === 0) {
+        let input = document.createElement("input");
+        input.type = "text";
+        input.value = name;
+        cell.appendChild(input);
       } else {
-        addRow("Student A", 20, 30);
-        addRow("Student B", 15, 30);
+        let input = document.createElement("input");
+        input.type = "number";
+        input.min = 0;
+        cell.appendChild(input);
       }
+      row.appendChild(cell);
     }
 
-    window.onload = loadData;
-  </script>
+    document.getElementById("studentScores").appendChild(row);
+  }
+
+  function evaluateAll() {
+    const maxInputs = document.querySelectorAll("#maxScores input");
+    const rows = document.querySelectorAll("#studentScores tr");
+
+    rows.forEach(row => {
+      let total = 0, totalMax = 0;
+      row.classList.remove("fail");
+      row.querySelectorAll("td").forEach((cell, idx) => {
+        const input = cell.querySelector("input");
+        if (idx === 0 || !input || isNaN(parseFloat(input.value))) return;
+        const max = parseFloat(maxInputs[idx - 1].value);
+        const score = parseFloat(input.value);
+        total += score;
+        totalMax += max;
+      });
+      const percent = (total / totalMax) * 100;
+      if (!isNaN(percent) && percent < 75) {
+        row.classList.add("fail");
+      }
+    });
+  }
+
+  function exportCSV() {
+    const titleInputs = document.querySelectorAll("#quizTitles input");
+    const maxInputs = document.querySelectorAll("#maxScores input");
+    const rows = document.querySelectorAll("#studentScores tr");
+
+    let csv = "Student Name,";
+    titleInputs.forEach(input => csv += input.value + ",");
+    csv += "\nMax Score,";
+    maxInputs.forEach(input => csv += input.value + ",");
+    csv += "\n";
+
+    rows.forEach(row => {
+      const cells = row.querySelectorAll("td input");
+      cells.forEach(input => csv += input.value + ",");
+      csv += "\n";
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'quiz_scores.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  document.getElementById("csvUpload").addEventListener("change", function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const lines = e.target.result.split("\n").map(line => line.trim()).filter(Boolean);
+      if (lines.length < 2) return;
+
+      const titles = lines[0].split(",").slice(1);
+      const maxScores = lines[1].split(",").slice(1);
+
+      // Clear table
+      document.getElementById("quizTitles").innerHTML = '<th>Student Name</th>';
+      document.getElementById("maxScores").innerHTML = '<th>Max Score</th>';
+      document.getElementById("studentScores").innerHTML = '';
+
+      titles.forEach((title, idx) => addQuizColumn(title, maxScores[idx]));
+
+      for (let i = 2; i < lines.length; i++) {
+        const parts = lines[i].split(",");
+        const name = parts[0];
+        addStudentRow(name);
+        const row = document.querySelectorAll("#studentScores tr")[i - 2];
+        for (let j = 1; j < parts.length; j++) {
+          row.cells[j].querySelector("input").value = parts[j];
+        }
+      }
+    };
+    reader.readAsText(file);
+  });
+</script>
 
 </body>
 </html>
