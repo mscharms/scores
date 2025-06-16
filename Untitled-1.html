@@ -28,7 +28,7 @@
       color: red;
       font-weight: bold;
     }
-    input[type="number"], input[type="text"] {
+    input[type="number"], input[type="text"], input[type="date"] {
       width: 100%;
       box-sizing: border-box;
       padding: 0.3rem;
@@ -38,14 +38,38 @@
       padding: 0.5rem 1rem;
       cursor: pointer;
     }
+    .header-fields {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .header-fields label {
+      font-weight: bold;
+    }
+    .header-fields input {
+      min-width: 200px;
+    }
   </style>
 </head>
 <body>
 
   <h2>Class Quiz Monitoring</h2>
 
-  <label for="passingGrade">Passing Grade (%): </label>
-  <input type="number" id="passingGrade" value="75" min="0" max="100">
+  <div class="header-fields">
+    <div>
+      <label for="subject">Subject / Quiz Title:</label><br>
+      <input type="text" id="subject" placeholder="e.g., Math Quiz 1">
+    </div>
+    <div>
+      <label for="quizDate">Quiz Date:</label><br>
+      <input type="date" id="quizDate">
+    </div>
+    <div>
+      <label for="passingGrade">Passing Grade (%):</label><br>
+      <input type="number" id="passingGrade" value="75" min="0" max="100">
+    </div>
+  </div>
 
   <table id="quizTable">
     <thead>
@@ -57,8 +81,7 @@
         <th>Status</th>
       </tr>
     </thead>
-    <tbody id="tableBody">
-    </tbody>
+    <tbody id="tableBody"></tbody>
   </table>
 
   <button onclick="addRow()">Add Student</button>
@@ -73,7 +96,6 @@
       const rows = tableBody.querySelectorAll("tr");
 
       rows.forEach(row => {
-        const name = row.cells[0].querySelector("input").value;
         const raw = parseFloat(row.cells[1].querySelector("input").value);
         const high = parseFloat(row.cells[2].querySelector("input").value);
         const percentCell = row.cells[3];
@@ -90,4 +112,99 @@
           percentCell.textContent = percent + "%";
 
           if (percent >= passingGrade) {
-            s
+            statusCell.textContent = "Passed";
+          } else {
+            statusCell.textContent = "Failed";
+            percentCell.classList.add("fail-score");
+            row.classList.add("fail-row");
+          }
+        }
+      });
+
+      saveData();
+    }
+
+    function addRow(name = "", raw = "", high = "") {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td><input type="text" value="${name}"></td>
+        <td><input type="number" value="${raw}"></td>
+        <td><input type="number" value="${high}"></td>
+        <td class="percent"></td>
+        <td class="status"></td>
+      `;
+
+      row.querySelectorAll("input").forEach(input => {
+        input.addEventListener("input", evaluate);
+      });
+
+      tableBody.appendChild(row);
+      evaluate();
+    }
+
+    function exportCSV() {
+      let subject = document.getElementById("subject").value || "Untitled Quiz";
+      let date = document.getElementById("quizDate").value || "No Date";
+      let csv = `Subject:,${subject}\nDate:,${date}\n\n`;
+      csv += "Student Name,Raw Score,Highest Score,Percentage,Status\n";
+
+      const rows = tableBody.querySelectorAll("tr");
+
+      rows.forEach(row => {
+        const name = row.cells[0].querySelector("input").value;
+        const raw = row.cells[1].querySelector("input").value;
+        const high = row.cells[2].querySelector("input").value;
+        const percent = row.cells[3].textContent;
+        const status = row.cells[4].textContent;
+
+        csv += `"${name}",${raw},${high},${percent},${status}\n`;
+      });
+
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${subject.replace(/\s+/g, "_") || "quiz"}_scores.csv`;
+      a.click();
+    }
+
+    function saveData() {
+      const data = {
+        subject: document.getElementById("subject").value,
+        date: document.getElementById("quizDate").value,
+        students: []
+      };
+
+      const rows = tableBody.querySelectorAll("tr");
+
+      rows.forEach(row => {
+        const name = row.cells[0].querySelector("input").value;
+        const raw = row.cells[1].querySelector("input").value;
+        const high = row.cells[2].querySelector("input").value;
+        data.students.push({ name, raw, high });
+      });
+
+      localStorage.setItem("quizData", JSON.stringify(data));
+    }
+
+    function loadData() {
+      const saved = localStorage.getItem("quizData");
+      if (saved) {
+        const data = JSON.parse(saved);
+        document.getElementById("subject").value = data.subject || "";
+        document.getElementById("quizDate").value = data.date || "";
+
+        data.students.forEach(entry => {
+          addRow(entry.name, entry.raw, entry.high);
+        });
+      } else {
+        addRow("Student A", 20, 30);
+        addRow("Student B", 15, 30);
+      }
+    }
+
+    window.onload = loadData;
+  </script>
+
+</body>
+</html>
