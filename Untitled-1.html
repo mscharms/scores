@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Class Quiz Monitoring</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 1rem;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 0.5rem;
+      text-align: center;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    .fail-row {
+      background-color: #ffe5e5;
+    }
+    .fail-score {
+      color: red;
+      font-weight: bold;
+    }
+    input[type="number"], input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.3rem;
+    }
+    button {
+      margin: 1rem 0.5rem 0 0;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Class Quiz Monitoring</h2>
+
+  <label for="passingGrade">Passing Grade (%): </label>
+  <input type="number" id="passingGrade" value="75" min="0" max="100">
+
+  <table id="quizTable">
+    <thead>
+      <tr>
+        <th>Student Name</th>
+        <th>Raw Score</th>
+        <th>Highest Score</th>
+        <th>Percentage</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+    </tbody>
+  </table>
+
+  <button onclick="addRow()">Add Student</button>
+  <button onclick="evaluate()">Evaluate</button>
+  <button onclick="exportCSV()">Download CSV</button>
+
+  <script>
+    const tableBody = document.getElementById("tableBody");
+
+    function evaluate() {
+      const passingGrade = parseFloat(document.getElementById("passingGrade").value);
+      const rows = tableBody.querySelectorAll("tr");
+
+      rows.forEach(row => {
+        const name = row.cells[0].querySelector("input").value;
+        const raw = parseFloat(row.cells[1].querySelector("input").value);
+        const high = parseFloat(row.cells[2].querySelector("input").value);
+        const percentCell = row.cells[3];
+        const statusCell = row.cells[4];
+
+        percentCell.classList.remove("fail-score");
+        row.classList.remove("fail-row");
+
+        if (isNaN(raw) || isNaN(high) || high === 0) {
+          percentCell.textContent = "N/A";
+          statusCell.textContent = "Invalid";
+        } else {
+          const percent = ((raw / high) * 100).toFixed(2);
+          percentCell.textContent = percent + "%";
+
+          if (percent >= passingGrade) {
+            s
